@@ -3,32 +3,75 @@ name: MLOps Pipeline - Wellness Tourism Prediction
 on:
   push:
     branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  schedule:
+    - cron: '0 0 * * 0'  # Weekly retraining
 
 env:
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+  HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}  # e.g., username/wellness-tourism-raw-data
+  HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}  # e.g., username/wellness-tourism-model
 
 jobs:
-  data-preparation:
+  data-download:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install huggingface-hub datasets pandas
+    
+    - name: Download raw data from Hugging Face
+      run: |
+        python data/scripts/download_data.py
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
+    
+    - name: Upload raw data artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: raw-data
+        path: data/raw/
 
+  data-preparation:
+    needs: data-download
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+    
+    - name: Download raw data artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: raw-data
+        path: data/raw/
+    
     - name: Run data preparation
       run: |
         python data/scripts/data_preparation.py
-
-    - name: Upload data artifacts
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+    
+    - name: Upload processed data artifacts
       uses: actions/upload-artifact@v4
       with:
         name: processed-data
@@ -39,27 +82,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+    
     - name: Download data artifacts
       uses: actions/download-artifact@v4
       with:
         name: processed-data
         path: data/processed/
-
+    
     - name: Train models
       run: |
         python models/training/train_model.py
-
+    
     - name: Upload model artifacts
       uses: actions/upload-artifact@v4
       with:
@@ -71,23 +114,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+    
     - name: Download model artifacts
       uses: actions/download-artifact@v4
       with:
         name: trained-models
         path: models/
-
+    
     - name: Evaluate models
       run: |
         python models/evaluation/evaluate_model.py
@@ -98,17 +141,17 @@ jobs:
     if: github.ref == 'refs/heads/main'
     steps:
     - uses: actions/checkout@v4
-
+    
     - name: Set up Python
       uses: actions/setup-python@v4
       with:
         python-version: '3.9'
-
+    
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-
+    
     - name: Deploy to Hugging Face Spaces
       run: |
         cd deployment
@@ -118,16 +161,16 @@ jobs:
     needs: deployment
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-
+    - uses: actions/checkout@v3
+    
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
-
+    
     - name: Build Docker image
       run: |
         cd deployment
         docker build -t wellness-tourism-app .
-
+    
     - name: Test Docker container
       run: |
         docker run -d -p 8501:8501 wellness-tourism-app
