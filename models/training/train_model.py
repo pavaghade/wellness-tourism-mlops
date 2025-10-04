@@ -9,9 +9,13 @@ import mlflow.sklearn
 from datasets import load_dataset
 import joblib
 import os
+from huggingface_hub import HfApi, create_repo
 
 class ModelTrainer:
     def __init__(self):
+        self.hf_token = os.getenv("HF_TOKEN")
+        self.model_repo_name = os.getenv("HF_MODEL_REPO", "wellness-tourism-model")
+
         self.models = {
             'RandomForest': RandomForestClassifier(random_state=42),
             'GradientBoosting': GradientBoostingClassifier(random_state=42),
@@ -42,11 +46,27 @@ class ModelTrainer:
 
     def load_data(self):
         """Load data from Hugging Face"""
-        train_dataset = load_dataset("wellness-tourism-train", split='train')
-        test_dataset = load_dataset("wellness-tourism-test", split='train')
+        print(f"\n{'='*60}")
+        print(f"LOADING TRAINING DATA")
+        print(f"{'='*60}\n")
 
-        train_df = train_dataset.to_pandas()
-        test_df = test_dataset.to_pandas()
+        try:
+            train_dataset = load_dataset("wellness-tourism-train", split='train', token=self.hf_token)
+            test_dataset = load_dataset("wellness-tourism-test", split='train', token=self.hf_token)
+
+            train_df = train_dataset.to_pandas()
+            test_df = test_dataset.to_pandas()
+
+            print(f"✓ Train dataset loaded: {train_df.shape}")
+            print(f"✓ Test dataset loaded: {test_df.shape}")
+
+        except Exception as e:
+            print(f"Error loading from Hugging Face: {e}")
+            print("Trying local files...")
+
+            train_df = pd.read_csv('data/processed/train.csv')
+            test_df = pd.read_csv('data/processed/test.csv')
+            print(f"✓ Loaded from local files")
 
         X_train = train_df.drop('ProdTaken', axis=1)
         y_train = train_df['ProdTaken']
@@ -55,71 +75,57 @@ class ModelTrainer:
 
         return X_train, X_test, y_train, y_test
 
-    def train_and_evaluate(self):
-        """Train models with hyperparameter tuning and track experiments"""
-        X_train, X_test, y_train, y_test = self.load_data()
+    def upload_model_to_hf(self, model, model_name, metrics):
+        """Upload model to Hugging Face Model Hub with proper error handling"""
+        print(f"\n{'='*60}")
+        print(f"UPLOADING MODEL TO HUGGING FACE")
+        print(f"{'='*60}\n")
 
-        best_model = None
-        best_score = 0
+        try:
+            api = HfApi()
 
-        mlflow.set_experiment("wellness-tourism-prediction")
+            # Create model directory
+            os.makedirs('models', exist_ok=True)
 
-        for model_name, model in self.models.items():
-            with mlflow.start_run(run_name=model_name):
-                # Hyperparameter tuning
-                grid_search = GridSearchCV(
-                    model,
-                    self.param_grids[model_name],
-                    cv=5,
-                    scoring='f1',
-                    n_jobs=-1
+            # Save model locally
+            model_path = 'models/best_model.joblib'
+            joblib.dump(model, model_path)
+            print(f"✓ Model saved locally: {model_path}")
+
+            # Verify token exists
+            if not self.hf_token:
+                print("✗ HF_TOKEN not found in environment variables!")
+                print("  Model saved locally but not uploaded to Hugging Face")
+                print(f"  You can upload manually or set HF_TOKEN and rerun")
+                return False
+
+            print(f"Using model repository: {self.model_repo_name}")
+
+            # Create repository if it doesn't exist
+            try:
+                repo_url = create_repo(
+                    repo_id=self.model_repo_name,
+                    repo_type="model",
+                    token=self.hf_token,
+                    private=False,
+                    exist_ok=True
                 )
+                print(f"✓ Repository created/verified: {self.model_repo_name}")
+                print(f"  URL: https://huggingface.co/{self.model_repo_name}")
+            except Exception as e:
+                print(f"Repository creation: {str(e)[:200]}")
 
-                grid_search.fit(X_train, y_train)
-
-                # Best model predictions
-                y_pred = grid_search.predict(X_test)
-
-                # Calculate metrics
-                accuracy = accuracy_score(y_test, y_pred)
-                precision = precision_score(y_test, y_pred)
-                recall = recall_score(y_test, y_pred)
-                f1 = f1_score(y_test, y_pred)
-
-                # Log parameters and metrics
-                mlflow.log_params(grid_search.best_params_)
-                mlflow.log_metrics({
-                    'accuracy': accuracy,
-                    'precision': precision,
-                    'recall': recall,
-                    'f1_score': f1
-                })
-
-                # Log model
-                mlflow.sklearn.log_model(
-                    grid_search.best_estimator_,
-                    f"{model_name}_model"
-                )
-
-                print(f"{model_name} - F1 Score: {f1:.4f}")
-
-                # Track best model
-                if f1 > best_score:
-                    best_score = f1
-                    best_model = grid_search.best_estimator_
-                    best_model_name = model_name
-
-        # Save best model
-        joblib.dump(best_model, 'models/best_model.joblib')
-
-        # Upload to Hugging Face Model Hub
-        from huggingface_hub import HfApi
-        api = HfApi()
-        api.upload_file(
-            path_or_fileobj="models/best_model.joblib",
-            path_in_repo="best_model.joblib",
-            repo_id="wellness-tourism-model",
-            token=os.getenv("HF_TOKEN")
-        )
-
-        return best_model, best_model_name, best_score
+            # Upload model file
+            print(f"\nUploading model file to Hugging Face...")
+            upload_result = api.upload_file(
+                path_or_fileobj=model_path,
+                path_in_repo="best_model.joblib",
+                repo_id=self.model_repo_name,
+                repo_type="model",
+                token=self.hf_token,
+                commit_message=f"Upload {model_name} model with F1={metrics.get('f1_score', 0):.4f}"
+            )
+            print(f"✓ Model uploaded successfully!")
+            print(f"  File URL: {upload_result}")
+        except Exception as e:
+          print(f"Repository creation: {str(e)[:200]}")
