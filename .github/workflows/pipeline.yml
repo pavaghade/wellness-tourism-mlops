@@ -14,7 +14,7 @@ jobs:
   data-download:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -34,7 +34,7 @@ jobs:
         HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
     
     - name: Upload raw data artifact
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: raw-data
         path: data/raw/
@@ -56,7 +56,7 @@ jobs:
         pip install -r requirements.txt
     
     - name: Download raw data artifact
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: raw-data
         path: data/raw/
@@ -69,7 +69,7 @@ jobs:
         HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
     
     - name: Upload processed data artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: processed-data
         path: data/processed/
@@ -78,7 +78,7 @@ jobs:
     needs: data-preparation
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -91,7 +91,7 @@ jobs:
         pip install -r requirements.txt
     
     - name: Download processed data
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: processed-data
         path: data/processed/
@@ -104,7 +104,7 @@ jobs:
         HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
     
     - name: Upload model artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: trained-models
         path: models/
@@ -113,7 +113,7 @@ jobs:
     needs: model-training
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -126,13 +126,13 @@ jobs:
         pip install -r requirements.txt
     
     - name: Download processed data artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: processed-data
         path: data/processed/
     
     - name: Download model artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: trained-models
         path: models/
@@ -146,7 +146,7 @@ jobs:
         HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
     
     - name: Upload evaluation reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: evaluation-reports
         path: reports/
@@ -156,7 +156,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -180,7 +180,7 @@ jobs:
     needs: deployment
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
