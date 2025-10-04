@@ -14,7 +14,7 @@ def deploy_to_hf_spaces():
         repo_id="wellness-tourism-app",
         repo_type="space",
         token=token,
-        space_sdk=SpaceSdk.streamlit,
+        space_sdk="streamlit",
         exist_ok=True  # ✅ don’t fail if it already exists
     )
 
