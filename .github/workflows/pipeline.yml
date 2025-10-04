@@ -91,6 +91,7 @@ jobs:
         pip install -r requirements.txt
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
     
     - name: Download data artifacts
       uses: actions/download-artifact@v4
@@ -125,6 +126,7 @@ jobs:
         pip install -r requirements.txt
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
         
     - name: Download model artifacts
       uses: actions/download-artifact@v4
