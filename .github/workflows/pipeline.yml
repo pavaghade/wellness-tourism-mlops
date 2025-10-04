@@ -3,10 +3,6 @@ name: MLOps Pipeline - Wellness Tourism Prediction
 on:
   push:
     branches: [ main, develop ]
-  pull_request:
-    branches: [ main ]
-  schedule:
-    - cron: '0 0 * * 0'  # Weekly retraining
 
 env:
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
@@ -29,6 +25,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install huggingface-hub datasets pandas
+        pip install -r requirements.txt
     
     - name: Download raw data from Hugging Face
       run: |
