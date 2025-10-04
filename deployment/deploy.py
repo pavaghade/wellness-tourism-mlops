@@ -1,5 +1,5 @@
 import os
-from huggingface_hub import HfApi, SpaceSdk
+from huggingface_hub import HfApi
 
 def deploy_to_hf_spaces():
     """Deploy Streamlit app to Hugging Face Spaces"""
