@@ -12,7 +12,7 @@ jobs:
   data-preparation:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -29,7 +29,7 @@ jobs:
         python data/scripts/data_preparation.py
 
     - name: Upload data artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: processed-data
         path: data/processed/
@@ -38,7 +38,7 @@ jobs:
     needs: data-preparation
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -51,7 +51,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Download data artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: processed-data
         path: data/processed/
@@ -61,7 +61,7 @@ jobs:
         python models/training/train_model.py
 
     - name: Upload model artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: trained-models
         path: models/
@@ -70,7 +70,7 @@ jobs:
     needs: model-training
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -83,7 +83,7 @@ jobs:
         pip install -r requirements.txt
 
     - name: Download model artifacts
-      uses: actions/download-artifact@v3
+      uses: actions/download-artifact@v4
       with:
         name: trained-models
         path: models/
@@ -97,7 +97,7 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -118,7 +118,7 @@ jobs:
     needs: deployment
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
