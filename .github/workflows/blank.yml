@@ -1,0 +1,135 @@
+name: MLOps Pipeline - Wellness Tourism Prediction
+
+on:
+  push:
+    branches: [ main, develop ]
+
+env:
+  HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+
+jobs:
+  data-preparation:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run data preparation
+      run: |
+        python data/scripts/data_preparation.py
+
+    - name: Upload data artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: processed-data
+        path: data/processed/
+
+  model-training:
+    needs: data-preparation
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Download data artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: processed-data
+        path: data/processed/
+
+    - name: Train models
+      run: |
+        python models/training/train_model.py
+
+    - name: Upload model artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: trained-models
+        path: models/
+
+  model-evaluation:
+    needs: model-training
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Download model artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: trained-models
+        path: models/
+
+    - name: Evaluate models
+      run: |
+        python models/evaluation/evaluate_model.py
+
+  deployment:
+    needs: [model-training, model-evaluation]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Deploy to Hugging Face Spaces
+      run: |
+        cd deployment
+        python deploy.py
+
+  docker-build:
+    needs: deployment
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v2
+
+    - name: Build Docker image
+      run: |
+        cd deployment
+        docker build -t wellness-tourism-app .
+
+    - name: Test Docker container
+      run: |
+        docker run -d -p 8501:8501 wellness-tourism-app
+        sleep 30
+        curl -f http://localhost:8501 || exit 1
