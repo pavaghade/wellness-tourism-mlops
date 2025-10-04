@@ -1,0 +1,25 @@
+data:
+  raw_data_path: "data/raw/tourism_data.csv"
+  train_test_split_ratio: 0.2
+  random_state: 42
+
+model:
+  target_column: "ProdTaken"
+  algorithms:
+    - RandomForest
+    - GradientBoosting
+    - AdaBoost
+    - DecisionTree
+
+huggingface:
+  dataset_name: "wellness-tourism-data"
+  model_name: "wellness-tourism-model"
+  app_name: "wellness-tourism-app"
+
+mlflow:
+  experiment_name: "wellness-tourism-prediction"
+  tracking_uri: "sqlite:///mlflow.db"
+
+deployment:
+  port: 8501
+  host: "0.0.0.0"
