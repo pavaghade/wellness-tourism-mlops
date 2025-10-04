@@ -7,14 +7,14 @@ on:
 env:
   HF_TOKEN: ${{ secrets.HF_TOKEN }}
   MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
-  HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}  # e.g., username/wellness-tourism-raw-data
-  HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}  # e.g., username/wellness-tourism-model
+  HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
+  HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
 
 jobs:
   data-download:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -24,8 +24,7 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install huggingface-hub datasets pandas
-        pip install -r requirements.txt
+        pip install huggingface-hub datasets pandas python-dotenv
     
     - name: Download raw data from Hugging Face
       run: |
@@ -35,7 +34,7 @@ jobs:
         HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
     
     - name: Upload raw data artifact
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: raw-data
         path: data/raw/
@@ -57,7 +56,7 @@ jobs:
         pip install -r requirements.txt
     
     - name: Download raw data artifact
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v3
       with:
         name: raw-data
         path: data/raw/
@@ -67,9 +66,10 @@ jobs:
         python data/scripts/data_preparation.py
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
     
     - name: Upload processed data artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: processed-data
         path: data/processed/
@@ -78,7 +78,7 @@ jobs:
     needs: data-preparation
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -89,12 +89,9 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
     
-    - name: Download data artifacts
-      uses: actions/download-artifact@v4
+    - name: Download processed data
+      uses: actions/download-artifact@v3
       with:
         name: processed-data
         path: data/processed/
@@ -102,9 +99,12 @@ jobs:
     - name: Train models
       run: |
         python models/training/train_model.py
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
     
     - name: Upload model artifacts
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v3
       with:
         name: trained-models
         path: models/
@@ -113,7 +113,7 @@ jobs:
     needs: model-training
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -124,12 +124,15 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-      env:
-        HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
-        
+    
+    - name: Download processed data artifacts
+      uses: actions/download-artifact@v3
+      with:
+        name: processed-data
+        path: data/processed/
+    
     - name: Download model artifacts
-      uses: actions/download-artifact@v4
+      uses: actions/download-artifact@v3
       with:
         name: trained-models
         path: models/
@@ -137,13 +140,23 @@ jobs:
     - name: Evaluate models
       run: |
         python models/evaluation/evaluate_model.py
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
+        HF_DATASET_NAME: ${{ secrets.HF_DATASET_NAME }}
+    
+    - name: Upload evaluation reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: evaluation-reports
+        path: reports/
 
   deployment:
     needs: [model-training, model-evaluation]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main'
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v3
     
     - name: Set up Python
       uses: actions/setup-python@v4
@@ -159,6 +172,9 @@ jobs:
       run: |
         cd deployment
         python deploy.py
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_MODEL_REPO: ${{ secrets.HF_MODEL_REPO }}
 
   docker-build:
     needs: deployment
