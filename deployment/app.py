@@ -169,9 +169,7 @@ def main():
             try:
                 model.predict(input_data)
             except ValueError as e:
-                if 'Unnamed: 0' in str(e):
-                    input_data['Unnamed: 0'] = 0
-                    st.warning("Note: Model expects an extra column. Please retrain the model with cleaned data.")
+                st.warning("Note: Model expects an extra column. Please retrain the model with cleaned data." + str(e))
             
             # Make prediction
             prediction_proba = model.predict_proba(input_data)[0]
