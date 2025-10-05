@@ -64,8 +64,8 @@ class DataPreparation:
         if 'CustomerID' in df.columns:
             columns_to_drop.append('CustomerID')
 
-        if 'Unnamed: 0' in df.columns:
-            columns_to_drop.append('Unnamed: 0')
+        if 'ID' in df.columns:
+            columns_to_drop.append('ID')
 
         if columns_to_drop:
             df = df.drop(columns_to_drop, axis=1)
@@ -91,7 +91,7 @@ class DataPreparation:
         final_rows = len(df)
         print(f"\nFinal number of rows: {final_rows}")
         print(f"Rows removed: {initial_rows - final_rows}")
-
+        print(f"  Final Columns: {list(df.columns)}")
         return df
 
     def encode_categorical_features(self, df, fit=True):
