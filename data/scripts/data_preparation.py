@@ -64,6 +64,9 @@ class DataPreparation:
         if 'CustomerID' in df.columns:
             columns_to_drop.append('CustomerID')
 
+        if 'Unnamed: 0' in df.columns:
+            columns_to_drop.append('Unnamed: 0')
+
         if 'ID' in df.columns:
             columns_to_drop.append('ID')
 
